@@ -2,22 +2,41 @@
 
 namespace App\Tests;
 
-use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use ApiPlatform\Symfony\Bundle\Test\ApiTestCase;
 
-//TODO use ApiWebTestCase (not work composer install)
-class ProductTest extends WebTestCase
+class ProductTest extends ApiTestCase
 {
     public function testProducts(): void
     {
-        $client = static::createClient([], [
-            'HTTP_HOST' => '127.0.0.1:40558',
-        ]);
-        $response = $client->jsonRequest('POST', '/api/product', ['name' => 'name', 'price' => 100]);
-        $this->assertResponseIsSuccessful();
+        static::$alwaysBootKernel = false;
 
-        $response = $client->jsonRequest('GET', '/api/products');
+        $client = static::createClient();
+
+        // create
+        $response = $client->request('POST', '/api/products', [
+            'json' => ['name' => 'name', 'price' => "100"],
+            'headers' => [
+                'content-type' => 'application/ld+json',
+            ],
+        ]);
         $this->assertResponseIsSuccessful();
-        //$this->assertResponseStatusCodeSame(Response::HTTP_OK);
-        $this->assertJson($client->getResponse()->getContent());
+        //$this->assertResponseHeaderSame('content-type', 'application/ld+json');
+        $productId = $response->toArray()['id'];
+        //$this->assertArrayHasKey($key, $array)
+        $this->assertJsonContains(['name' => 'name']);
+
+        // get by id
+        $client->request('GET', '/api/products/' . $productId);
+        $this->assertResponseIsSuccessful();
+        $this->assertJsonContains(['name' => 'name']);
+
+        // list
+        $client->request('GET', '/api/products');
+        $this->assertResponseIsSuccessful();
+        $this->assertJsonContains(['member' => []]);
+        
+        // delete
+        $response = $client->request('DELETE', '/api/products/' . $productId);
+        $this->assertResponseIsSuccessful();
     }
 }
